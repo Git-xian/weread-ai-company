@@ -92,35 +92,77 @@ def coread_html(coread):
                          f'<div class="seg-text">{esc(s["text"])}</div>{u}{a}</div>')
     parts.append('''<div id="editor" hidden>
       <div id="edit-which" class="mm"></div>
-      <textarea id="edit-user" placeholder="🟡 你的批注…"></textarea>
-      <textarea id="edit-ai" placeholder="🔵 助手的批注…"></textarea>
-      <button onclick="saveNote()">保存</button>
-      <span class="hint">保存后记得导出 JSON 发给助手</span>
-    </div>
-    <details id="export-box"><summary>📤 导出批注（发给助手保存）</summary><div id="coread-json"></div></details></div>''')
+      <textarea id="edit-user" placeholder="🟡 你的批注…" oninput="autoSave()"></textarea>
+      <textarea id="edit-ai" placeholder="🔵 助手的批注…" oninput="autoSave()"></textarea>
+      <div class="ed-row">
+        <button class="dl" onclick="downloadNotes()">⬇ 下载批注</button>
+        <span class="hint">输入即自动暂存（本机不丢）；下载 JSON 发给助手即长期保存</span>
+      </div>
+    </div></div>''')
     return "".join(parts)
 
 COREAD_JS = """
+function renderNotes(el, n){
+  var un=el.querySelector('.u-note'); if(un)un.remove();
+  var an=el.querySelector('.a-note'); if(an)an.remove();
+  if(n.user){var u=document.createElement('div');u.className='u-note';u.textContent='🟡 你：'+n.user;el.appendChild(u)}
+  if(n.ai){var a=document.createElement('div');a.className='a-note';a.textContent='🔵 助手：'+n.ai;el.appendChild(a)}
+}
+function persist(){
+  try{ localStorage.setItem('coread-notes', JSON.stringify(COREAD_NOTES)); }catch(e){}
+}
+function loadPersisted(){
+  try{
+    var s=localStorage.getItem('coread-notes');
+    if(!s) return;
+    var saved=JSON.parse(s);
+    for(var k in saved){
+      if(!COREAD_NOTES[k] || (!COREAD_NOTES[k].user && !COREAD_NOTES[k].ai) || saved[k].user || saved[k].ts > (COREAD_NOTES[k].ts||0))
+        COREAD_NOTES[k]=saved[k];
+    }
+    for(var k in COREAD_NOTES){
+      var el=document.getElementById('seg-'+k);
+      if(el) renderNotes(el, COREAD_NOTES[k]);
+    }
+  }catch(e){}
+}
 function pick(id){
   document.querySelectorAll('.seg.on').forEach(function(x){x.classList.remove('on')});
   var el=document.getElementById('seg-'+id);el.classList.add('on');cur=id;
-  var ed=document.getElementById('editor');ed.hidden=false;
+  var ed=document.getElementById('editor');
+  el.after(ed); ed.hidden=false;            // 编辑器跟随点选段落
   document.getElementById('edit-which').textContent='第 '+id+' 段 · '+(el.querySelector('.seg-text').textContent.slice(0,40))+'…';
   var n=COREAD_NOTES[String(id)]||{};
   document.getElementById('edit-user').value=n.user||'';
   document.getElementById('edit-ai').value=n.ai||'';
 }
-function saveNote(){
+function downloadNotes(){
+  var u=document.getElementById('edit-user').value, a=document.getElementById('edit-ai').value;
+  if(cur!=null && (u||a)){
+    COREAD_NOTES[String(cur)]={user:u,ai:a,ts:Date.now()};
+    renderNotes(document.getElementById('seg-'+cur), COREAD_NOTES[String(cur)]);
+  }
+  persist();
+  var blob=new Blob([JSON.stringify(COREAD_NOTES,null,2)],{type:'application/json'});
+  var aEl=document.createElement('a');
+  aEl.href=URL.createObjectURL(blob);
+  aEl.download='coread-notes.json';
+  aEl.click();
+  URL.revokeObjectURL(aEl.href);
+}
+// 输入即自动保存（停顿 600ms 后触发）
+var _t=null;
+function autoSave(){
   if(cur==null)return;
-  COREAD_NOTES[String(cur)]={user:document.getElementById('edit-user').value,ai:document.getElementById('edit-ai').value};
-  var el=document.getElementById('seg-'+cur);
-  var un=el.querySelector('.u-note'); if(un)un.remove();
-  var an=el.querySelector('.a-note'); if(an)an.remove();
-  var n=COREAD_NOTES[String(cur)];
-  if(n.user){var u=document.createElement('div');u.className='u-note';u.textContent='🟡 你：'+n.user;el.appendChild(u)}
-  if(n.ai){var a=document.createElement('div');a.className='a-note';a.textContent='🔵 助手：'+n.ai;el.appendChild(a)}
-  document.getElementById('coread-json').textContent=JSON.stringify(COREAD_NOTES);
-  alert('已保存在页面里。点下方「📤 导出批注」把 JSON 发给助手即可长期保存');
+  clearTimeout(_t);
+  _t=setTimeout(function(){
+    var u=document.getElementById('edit-user').value, a=document.getElementById('edit-ai').value;
+    if(u||a){
+      COREAD_NOTES[String(cur)]={user:u,ai:a,ts:Date.now()};
+      renderNotes(document.getElementById('seg-'+cur), COREAD_NOTES[String(cur)]);
+      persist();
+    }
+  },600);
 }
 """
 
@@ -133,27 +175,19 @@ h1{font-size:22px}.sub{color:var(--sub);font-size:13px;margin:4px 0 14px}
 .tabs{display:flex;gap:8px;margin-bottom:16px}
 .tab{flex:1;font:inherit;font-size:14px;font-weight:600;padding:10px 0;border:1px solid var(--blue);border-radius:10px;background:var(--card);color:var(--ink);cursor:pointer;box-shadow:0 1px 4px rgba(74,144,217,.15)}
 .tab.off{background:#e9e4da;color:#a39c8c;font-weight:400;border-color:#e0dacd;box-shadow:none}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
-.kpi b{display:block;font-size:21px}.kpi span{color:var(--sub);font-size:12px}
+.sum-line{color:var(--sub);font-size:13px;margin-bottom:12px}
+.sum-line b{color:var(--ink)}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:18px}
 .panel h3{font-size:14px;color:var(--sub);margin-bottom:10px}.hint{font-weight:400;font-size:11px;margin-left:8px}
 .cr-book{background:#f4f8fd;border:1px solid #d8e5f4;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:14px}
 .cr-book-sub{display:block;color:var(--sub);font-size:11px;margin-top:2px}
 .cr-head{display:block}
 .cr-sub{display:block;font-weight:400;font-size:12px;color:var(--sub);margin-top:3px}
-.heat{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
-.hm-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:0 0 auto}
-.hm-col span{font-size:10px;color:var(--sub)}
-.hm-col .cell{width:36px;height:36px;border-radius:9px}
-.cell{background:#efece5}
-.cell:hover{transform:scale(1.08)}
-.cell.l1{background:#cfe3f7}.cell.l2{background:#a3cbef}.cell.l3{background:#6fa8de}.cell.l4{background:#3d7fc1}
-.top-row{display:flex;gap:10px;padding:3px 0;font-size:14px}.rk{color:var(--sub);width:18px}
-.tm{margin-left:auto;color:var(--sub);font-size:12px}
 .search{width:100%;padding:9px 14px;border:1px solid var(--line);border-radius:10px;font:inherit;margin-bottom:12px;background:#fff}
-.book-card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
-.bh{padding:13px 16px;cursor:pointer;display:block}
+.book-card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;display:flex}
+.bc-spine{width:6px;flex:0 0 6px}
+.bc-body{flex:1;min-width:0}
+.bh{padding:13px 16px 13px 12px;cursor:pointer;display:block}
 .bh:hover{background:#fdfbf7}
 .bt{font-weight:600;font-size:15px;line-height:1.45;word-break:break-word}
 .ba{color:var(--sub);font-weight:400;font-size:13px;margin-left:8px;white-space:normal}
@@ -179,10 +213,11 @@ h1{font-size:22px}.sub{color:var(--sub);font-size:13px;margin:4px 0 14px}
 .a-note{margin-top:5px;font-size:13px;background:#f4f8fd;border-left:3px solid var(--blue);padding:5px 9px;border-radius:0 6px 6px 0}
 #editor{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
 textarea{width:100%;min-height:56px;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;margin:4px 0}
-button{font:inherit;padding:7px 18px;border:0;border-radius:8px;background:var(--blue);color:#fff;cursor:pointer}
+button{font:inherit;padding:7px 16px;border:0;border-radius:8px;background:var(--blue);color:#fff;cursor:pointer}
+button.dl{background:#6ba26b}
+.ed-row{display:flex;align-items:center;gap:8px;margin-top:2px}
+.ed-row .hint{flex:1;font-size:11px}
 #coread-json{margin-top:8px;padding:8px;background:#f6f4ee;border-radius:8px;font:11px/1.5 monospace;word-break:break-all;max-height:140px;overflow:auto;color:#7a7466}
-#export-box{margin-top:12px}
-#export-box summary{cursor:pointer;color:var(--blue);font-size:13px;padding:6px 0}
 footer{margin-top:26px;text-align:center;color:var(--sub);font-size:12px}
 """
 
@@ -232,21 +267,12 @@ def main():
     total_hl = sum(b["hl"] for b in per_book)
     total_th = sum(b["th"] for b in per_book)
 
-    rd = stats.get("overall") or {}
-    heat = sorted((int(k), int(v or 0)) for k, v in (rd.get("readTimes") or {}).items())
-    max_heat = max([v for _, v in heat], default=1) or 1
-
-    kpis = "".join(
-        f'<div class="kpi"><b>{v}</b><span>{label}</span></div>' for v, label in [
-            (len(books), "书架藏书"), (len(nb_list), "有笔记的书"),
-            (total_hl, "划线"), (total_th, "想法"),
-            (fmt_time(rd.get("totalReadTime")), "累计阅读"),
-        ])
-    cells = "".join(
-        f'<div class="hm-col"><div class="cell l{0 if v == 0 else min(4, v * 4 // max_heat + 1)}" title="{fmt_date(k)}：{fmt_time(v)}"></div><span>{time.strftime("%y-%m", time.localtime(k))}</span></div>'
-        for k, v in heat)
+    summary = f"共 <b>{len(per_book)}</b> 本有笔记 · <b>{total_hl}</b> 条划线 · <b>{total_th}</b> 条想法"
 
     # ---- 书卡 ----
+    SPINE_COLORS = ["#5b8fd9", "#e0a63f", "#9b6bd3", "#5fae72", "#d97b8f", "#6bb8c9", "#c9825a", "#8a9a6b"]
+    def spine_color(title):
+        return SPINE_COLORS[sum(ord(c) for c in (title or "?")) % len(SPINE_COLORS)]
     cards = []
     for b in per_book:
         items_html = "".join(
@@ -261,10 +287,11 @@ def main():
         link = f'<a class="open" href="{esc(b["deepLink"])}" target="_blank">阅读 ↗</a>' if b.get("deepLink") else ""
         stats_line = f'<div class="bs">🟡 {b["hl"]} · 💭 {b["th"]}{prog}{recent}{link}</div>'
         cards.append(
-            f'<div class="book-card"><div class="bh" onclick="tg(this)">'
+            f'<div class="book-card"><div class="bc-spine" style="background:linear-gradient(180deg,{spine_color(b["title"])},{spine_color(b["title"])}cc)"></div>'
+            f'<div class="bc-body"><div class="bh" onclick="tg(this)">'
             f'<div class="bt">{esc(b["title"])}<span class="ba">{esc(b["author"])}</span></div>'
             f'{stats_line}'
-            f'</div><div class="bb" hidden>{items_html}</div></div>')
+            f'</div><div class="bb" hidden>{items_html}</div></div></div>')
     cards_html = "".join(cards)
 
     # ---- 共读库（EPUB 拆分结果，可选） ----
@@ -288,8 +315,7 @@ def main():
 </div>'''
     coread_page = f'<div id="page-coread" class="page"{" hidden" if not coread else ""}>{cr_book}{cr_html}</div>'
     shelf_page = f'''<div id="page-shelf" class="page"{" hidden" if coread else ""}>
-<div class="kpis">{kpis}</div>
-<div class="panel"><h3>🔥 阅读轨迹</h3><div class="heat">{cells or '<div class="empty">暂无</div>'}</div></div>
+<div class="sum-line">{summary}</div>
 <input class="search" placeholder="搜索书名 / 作者 / 划线内容…">
 {cards_html}
 </div>'''
@@ -317,11 +343,13 @@ c.querySelectorAll('.mark').forEach(function(m){{m.style.display=m.querySelector
 else{{c.querySelectorAll('.mark').forEach(function(m){{m.style.display=''}})}}
 }})}});
 {cr_js}
+loadPersisted();
 function go(w){{
   document.querySelectorAll('.page').forEach(function(p){{p.hidden=true}});
   document.getElementById('page-'+w).hidden=false;
-  document.querySelectorAll('.tab').forEach(function(t){{t.classList.remove('off')}});
-  document.getElementById('tab-'+w).classList.add('off');
+  document.querySelectorAll('.tab').forEach(function(t){{t.classList.add('off')}});
+  document.getElementById('tab-'+w).classList.remove('off');
+  window.scrollTo({{top:0}});
 }}
 </script>
 </div></body></html>'''
