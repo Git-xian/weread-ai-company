@@ -1,0 +1,187 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>共读看板</title><style>
+:root{--bg:#faf7f2;--card:#fff;--ink:#2c2a26;--sub:#8a8578;--yellow:#f5c518;--blue:#4a90d9;--purple:#9b6bd3;--line:#e8e2d6}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.7 "PingFang SC","Microsoft YaHei",sans-serif;padding:28px 14px 80px}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:22px}.sub{color:var(--sub);font-size:13px;margin:4px 0 14px}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tab{flex:1;font:inherit;font-size:14px;font-weight:600;padding:10px 0;border:1px solid var(--blue);border-radius:10px;background:var(--card);color:var(--ink);cursor:pointer;box-shadow:0 1px 4px rgba(74,144,217,.15)}
+.tab.off{background:#e9e4da;color:#a39c8c;font-weight:400;border-color:#e0dacd;box-shadow:none}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px}
+.kpi{border-radius:12px;padding:12px 14px;color:#fff;position:relative;overflow:hidden}
+.kpi b{display:block;font-size:21px;text-shadow:0 1px 2px rgba(0,0,0,.12)}.kpi span{opacity:.85;font-size:12px}
+.kpi::after{content:"";position:absolute;right:-14px;top:-14px;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18)}
+.kpi.k1{background:linear-gradient(135deg,#5b8fd9,#3d6bb1)}
+.kpi.k2{background:linear-gradient(135deg,#e0a63f,#c9822c)}
+.kpi.k3{background:linear-gradient(135deg,#9b6bd3,#7a4cb8)}
+.kpi.k4{background:linear-gradient(135deg,#5fae72,#42855a)}
+.kpi.k5{background:linear-gradient(135deg,#d97b8f,#b95570)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:18px}
+.panel.heat-panel{background:linear-gradient(160deg,#fff,#f2f6fb);border-color:#dce6f2}
+.panel h3{font-size:14px;color:var(--sub);margin-bottom:10px}.hint{font-weight:400;font-size:11px;margin-left:8px}
+.cr-book{background:#f4f8fd;border:1px solid #d8e5f4;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:14px}
+.cr-book-sub{display:block;color:var(--sub);font-size:11px;margin-top:2px}
+.cr-head{display:block}
+.cr-sub{display:block;font-weight:400;font-size:12px;color:var(--sub);margin-top:3px}
+.heat{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+.hm-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:0 0 auto}
+.hm-col span{font-size:10px;color:var(--sub)}
+.hm-col .cell{width:36px;height:36px;border-radius:9px}
+.cell{background:#efece5}
+.cell:hover{transform:scale(1.08)}
+.cell.l1{background:#cfe3f7}.cell.l2{background:#a3cbef}.cell.l3{background:#6fa8de}.cell.l4{background:#3d7fc1}
+.top-row{display:flex;gap:10px;padding:3px 0;font-size:14px}.rk{color:var(--sub);width:18px}
+.tm{margin-left:auto;color:var(--sub);font-size:12px}
+.search{width:100%;padding:9px 14px;border:1px solid var(--line);border-radius:10px;font:inherit;margin-bottom:12px;background:#fff}
+.book-card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;display:flex}
+.bc-spine{width:6px;flex:0 0 6px}
+.bc-body{flex:1;min-width:0}
+.bh{padding:13px 16px 13px 12px;cursor:pointer;display:block}
+.bh:hover{background:#fdfbf7}
+.bt{font-weight:600;font-size:15px;line-height:1.45;word-break:break-word}
+.ba{color:var(--sub);font-weight:400;font-size:13px;margin-left:8px;white-space:normal}
+.bs{color:var(--sub);font-size:12px;display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}
+.prog{display:inline-flex;align-items:center;width:78px;height:5px;background:#efece5;border-radius:3px;flex:0 0 auto}
+.pb{height:100%;background:var(--blue);border-radius:3px}
+.prog b{position:absolute;left:calc(100% + 6px);font-size:11px;color:var(--sub);font-weight:400;white-space:nowrap}
+.rd{color:#8a9a6b;font-size:11px}
+.open{color:var(--blue);font-size:12px;text-decoration:none;margin-left:auto}
+.bb{border-top:1px dashed var(--line);padding:4px 16px 12px}
+.mark{padding:11px 0;border-bottom:1px dashed var(--line)}.mark:last-child{border:0}
+.mm{color:var(--sub);font-size:12px;margin-bottom:3px}.mt{font-size:14px}
+.highlight .mt{border-left:3px solid var(--yellow);padding-left:10px}
+.thought .mt{border-left:3px solid var(--purple);padding-left:10px}
+.ai{margin-top:7px;padding:7px 11px;background:#f4f8fd;border-left:3px solid var(--blue);border-radius:0 6px 6px 0;font-size:13px;color:#5b7fa6}
+.empty{color:var(--sub);text-align:center;padding:16px}
+.cth{margin:14px 0 6px;color:#6b6250;font-size:15px}
+.seg{padding:8px 10px;border-radius:8px;cursor:pointer;margin:2px 0}
+.seg:hover{background:#fdf8ea}
+.seg.on{background:#fdf3d1;outline:1px solid var(--yellow)}
+.seg-text{font-size:14px}
+.u-note{margin-top:5px;font-size:13px;background:#fdf6d8;border-left:3px solid var(--yellow);padding:5px 9px;border-radius:0 6px 6px 0}
+.a-note{margin-top:5px;font-size:13px;background:#f4f8fd;border-left:3px solid var(--blue);padding:5px 9px;border-radius:0 6px 6px 0}
+#editor{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+textarea{width:100%;min-height:56px;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;margin:4px 0}
+button{font:inherit;padding:7px 16px;border:0;border-radius:8px;background:var(--blue);color:#fff;cursor:pointer}
+button.dl{background:#6ba26b}
+.ed-row{display:flex;align-items:center;gap:8px;margin-top:2px}
+.ed-row .hint{flex:1;font-size:11px}
+#coread-json{margin-top:8px;padding:8px;background:#f6f4ee;border-radius:8px;font:11px/1.5 monospace;word-break:break-all;max-height:140px;overflow:auto;color:#7a7466}
+footer{margin-top:26px;text-align:center;color:var(--sub);font-size:12px}
+</style></head><body><div class="wrap">
+<h1>📖 共读看板</h1>
+<div class="sub">你的划线 🟡 · 想法 💭 · AI 批注 🔵 · 生成于 2026-10-04</div>
+<div class="tabs">
+  <button class="tab" id="tab-coread" onclick="go('coread')">📖 共读</button>
+  <button class="tab off" id="tab-shelf" onclick="go('shelf')">📚 书架与笔记</button>
+</div>
+<div id="page-coread" class="page"><div class="cr-book">当前共读：<b>示例书《灯塔日志》.epub</b><span class="cr-book-sub">批注将保存在 share-demo/coread-notes.json</span></div><div class="panel" id="coread"><h3 class="cr-head">📖 共读模式（原版书对照）<span class="cr-sub">点任意段落 → 写 🟡你的 / 🔵助手的批注</span></h3><h4 class="cth">第一章 灯塔</h4><div class="seg" id="seg-1" onclick="pick(1)"><div class="seg-text">守塔人在日志的第一页写道：光不是用来征服黑暗的，是用来标记边界——这里有人，这里被记得。</div><div class="u-note">🟡 你：这段像在写守塔，其实在写所有坚持记录的人。</div><div class="a-note">🔵 助手：第一页日志就把“光”重新定义了：不是照亮，是标记。这个动词的转换贯穿全书——守塔人做的每一件事，都是把宏大还原成具体的日常。</div></div><div class="seg" id="seg-2" onclick="pick(2)"><div class="seg-text">他每天擦亮透镜，像擦拭一段不肯褪色的记忆。船从远处经过，没有人知道塔里的人也在凝视他们。</div></div><div class="seg" id="seg-3" onclick="pick(3)"><div class="seg-text">“你见过最远的船是什么样子？”学徒问。“最远的船，”守塔人说，“是消失前还在发光的那一艘。”</div><div class="a-note">🔵 助手：注意“消失前还在发光”的双重含义：物理上的船和记忆里的人。作者不写离别，只写光还在——这是全书最温柔的处理方式。</div></div><div id="editor" hidden>
+      <div id="edit-which" class="mm"></div>
+      <textarea id="edit-user" placeholder="🟡 你的批注…" oninput="autoSave()"></textarea>
+      <textarea id="edit-ai" placeholder="🔵 助手的批注…" oninput="autoSave()"></textarea>
+      <div class="ed-row">
+        <button onclick="saveNote()" id="btn-save">保存</button>
+        <button class="dl" onclick="downloadNotes()">⬇ 下载</button>
+        <span class="hint">输入即自动暂存；下载后发给助手长期保存</span>
+      </div>
+    </div></div></div>
+<div id="page-shelf" class="page" hidden>
+<div class="kpis"><div class="kpi k1"><b>40</b><span>书架藏书</span></div><div class="kpi k2"><b>8</b><span>有笔记的书</span></div><div class="kpi k3"><b>16</b><span>划线</span></div><div class="kpi k4"><b>8</b><span>想法</span></div><div class="kpi k5"><b>135小时8分</b><span>累计阅读</span></div></div>
+<div class="panel heat-panel"><h3>🔥 阅读轨迹</h3><div class="heat"><div class="hm-col"><div class="cell l3" title="2019-01-01：4小时0分"></div><span>19-01</span></div><div class="hm-col"><div class="cell l0" title="2019-02-01：0分钟"></div><span>19-02</span></div><div class="hm-col"><div class="cell l0" title="2019-03-01：0分钟"></div><span>19-03</span></div><div class="hm-col"><div class="cell l3" title="2019-04-01：4小时0分"></div><span>19-04</span></div><div class="hm-col"><div class="cell l1" title="2019-05-01：1小时0分"></div><span>19-05</span></div><div class="hm-col"><div class="cell l1" title="2019-06-01：20分钟"></div><span>19-06</span></div><div class="hm-col"><div class="cell l1" title="2019-07-01：20分钟"></div><span>19-07</span></div><div class="hm-col"><div class="cell l1" title="2019-08-01：20分钟"></div><span>19-08</span></div><div class="hm-col"><div class="cell l3" title="2019-09-01：4小时0分"></div><span>19-09</span></div><div class="hm-col"><div class="cell l0" title="2019-10-01：0分钟"></div><span>19-10</span></div><div class="hm-col"><div class="cell l3" title="2019-11-01：4小时0分"></div><span>19-11</span></div><div class="hm-col"><div class="cell l3" title="2019-12-01：4小时0分"></div><span>19-12</span></div><div class="hm-col"><div class="cell l3" title="2020-01-01：3小时0分"></div><span>20-01</span></div><div class="hm-col"><div class="cell l0" title="2020-02-01：0分钟"></div><span>20-02</span></div><div class="hm-col"><div class="cell l3" title="2020-03-01：3小时0分"></div><span>20-03</span></div><div class="hm-col"><div class="cell l2" title="2020-04-01：2小时0分"></div><span>20-04</span></div><div class="hm-col"><div class="cell l0" title="2020-05-01：0分钟"></div><span>20-05</span></div><div class="hm-col"><div class="cell l0" title="2020-06-01：0分钟"></div><span>20-06</span></div><div class="hm-col"><div class="cell l0" title="2020-07-01：0分钟"></div><span>20-07</span></div><div class="hm-col"><div class="cell l1" title="2020-08-01：20分钟"></div><span>20-08</span></div><div class="hm-col"><div class="cell l1" title="2020-09-01：20分钟"></div><span>20-09</span></div><div class="hm-col"><div class="cell l3" title="2020-10-01：3小时0分"></div><span>20-10</span></div><div class="hm-col"><div class="cell l3" title="2020-11-01：3小时0分"></div><span>20-11</span></div><div class="hm-col"><div class="cell l0" title="2020-12-01：0分钟"></div><span>20-12</span></div><div class="hm-col"><div class="cell l3" title="2021-01-01：3小时0分"></div><span>21-01</span></div><div class="hm-col"><div class="cell l1" title="2021-02-01：20分钟"></div><span>21-02</span></div><div class="hm-col"><div class="cell l3" title="2021-03-01：4小时0分"></div><span>21-03</span></div><div class="hm-col"><div class="cell l3" title="2021-04-01：4小时0分"></div><span>21-04</span></div><div class="hm-col"><div class="cell l3" title="2021-05-01：4小时0分"></div><span>21-05</span></div><div class="hm-col"><div class="cell l3" title="2021-06-01：3小时0分"></div><span>21-06</span></div><div class="hm-col"><div class="cell l2" title="2021-07-01：2小时0分"></div><span>21-07</span></div><div class="hm-col"><div class="cell l1" title="2021-08-01：20分钟"></div><span>21-08</span></div><div class="hm-col"><div class="cell l2" title="2021-09-01：2小时0分"></div><span>21-09</span></div><div class="hm-col"><div class="cell l3" title="2021-10-01：3小时0分"></div><span>21-10</span></div><div class="hm-col"><div class="cell l1" title="2021-11-01：1小时0分"></div><span>21-11</span></div><div class="hm-col"><div class="cell l4" title="2021-12-01：5小时33分"></div><span>21-12</span></div><div class="hm-col"><div class="cell l4" title="2022-01-01：5小时33分"></div><span>22-01</span></div><div class="hm-col"><div class="cell l0" title="2022-02-01：0分钟"></div><span>22-02</span></div><div class="hm-col"><div class="cell l4" title="2022-03-01：5小时33分"></div><span>22-03</span></div><div class="hm-col"><div class="cell l4" title="2022-04-01：5小时33分"></div><span>22-04</span></div><div class="hm-col"><div class="cell l1" title="2022-05-01：20分钟"></div><span>22-05</span></div><div class="hm-col"><div class="cell l3" title="2022-06-01：4小时0分"></div><span>22-06</span></div><div class="hm-col"><div class="cell l2" title="2022-07-01：2小时0分"></div><span>22-07</span></div><div class="hm-col"><div class="cell l1" title="2022-08-01：1小时0分"></div><span>22-08</span></div><div class="hm-col"><div class="cell l1" title="2022-09-01：1小时0分"></div><span>22-09</span></div><div class="hm-col"><div class="cell l1" title="2022-10-01：20分钟"></div><span>22-10</span></div><div class="hm-col"><div class="cell l1" title="2022-11-01：20分钟"></div><span>22-11</span></div><div class="hm-col"><div class="cell l4" title="2022-12-01：5小时33分"></div><span>22-12</span></div><div class="hm-col"><div class="cell l1" title="2023-01-01：1小时0分"></div><span>23-01</span></div><div class="hm-col"><div class="cell l0" title="2023-02-01：0分钟"></div><span>23-02</span></div><div class="hm-col"><div class="cell l0" title="2023-03-01：0分钟"></div><span>23-03</span></div><div class="hm-col"><div class="cell l2" title="2023-04-01：2小时0分"></div><span>23-04</span></div><div class="hm-col"><div class="cell l0" title="2023-05-01：0分钟"></div><span>23-05</span></div><div class="hm-col"><div class="cell l1" title="2023-06-01：1小时0分"></div><span>23-06</span></div><div class="hm-col"><div class="cell l4" title="2023-07-01：5小时33分"></div><span>23-07</span></div><div class="hm-col"><div class="cell l1" title="2023-08-01：1小时0分"></div><span>23-08</span></div><div class="hm-col"><div class="cell l3" title="2023-09-01：3小时0分"></div><span>23-09</span></div><div class="hm-col"><div class="cell l1" title="2023-10-01：1小时0分"></div><span>23-10</span></div><div class="hm-col"><div class="cell l4" title="2023-11-01：5小时33分"></div><span>23-11</span></div><div class="hm-col"><div class="cell l0" title="2023-12-01：0分钟"></div><span>23-12</span></div><div class="hm-col"><div class="cell l3" title="2024-01-01：4小时0分"></div><span>24-01</span></div><div class="hm-col"><div class="cell l2" title="2024-02-01：2小时0分"></div><span>24-02</span></div><div class="hm-col"><div class="cell l3" title="2024-03-01：3小时0分"></div><span>24-03</span></div><div class="hm-col"><div class="cell l0" title="2024-04-01：0分钟"></div><span>24-04</span></div><div class="hm-col"><div class="cell l2" title="2024-05-01：2小时0分"></div><span>24-05</span></div><div class="hm-col"><div class="cell l0" title="2024-06-01：0分钟"></div><span>24-06</span></div><div class="hm-col"><div class="cell l3" title="2024-07-01：3小时0分"></div><span>24-07</span></div><div class="hm-col"><div class="cell l1" title="2024-08-01：1小时0分"></div><span>24-08</span></div><div class="hm-col"><div class="cell l4" title="2024-09-01：5小时33分"></div><span>24-09</span></div><div class="hm-col"><div class="cell l3" title="2024-10-01：4小时0分"></div><span>24-10</span></div><div class="hm-col"><div class="cell l3" title="2024-11-01：3小时0分"></div><span>24-11</span></div><div class="hm-col"><div class="cell l4" title="2024-12-01：5小时33分"></div><span>24-12</span></div><div class="hm-col"><div class="cell l1" title="2025-01-01：1小时0分"></div><span>25-01</span></div><div class="hm-col"><div class="cell l3" title="2025-02-01：3小时0分"></div><span>25-02</span></div><div class="hm-col"><div class="cell l1" title="2025-03-01：20分钟"></div><span>25-03</span></div><div class="hm-col"><div class="cell l3" title="2025-04-01：4小时0分"></div><span>25-04</span></div><div class="hm-col"><div class="cell l0" title="2025-05-01：0分钟"></div><span>25-05</span></div><div class="hm-col"><div class="cell l0" title="2025-06-01：0分钟"></div><span>25-06</span></div><div class="hm-col"><div class="cell l3" title="2025-07-01：4小时0分"></div><span>25-07</span></div><div class="hm-col"><div class="cell l1" title="2025-08-01：20分钟"></div><span>25-08</span></div><div class="hm-col"><div class="cell l4" title="2025-09-01：5小时33分"></div><span>25-09</span></div><div class="hm-col"><div class="cell l1" title="2025-10-01：1小时0分"></div><span>25-10</span></div><div class="hm-col"><div class="cell l0" title="2025-11-01：0分钟"></div><span>25-11</span></div><div class="hm-col"><div class="cell l4" title="2025-12-01：5小时33分"></div><span>25-12</span></div><div class="hm-col"><div class="cell l1" title="2026-01-01：20分钟"></div><span>26-01</span></div><div class="hm-col"><div class="cell l4" title="2026-02-01：5小时33分"></div><span>26-02</span></div><div class="hm-col"><div class="cell l0" title="2026-03-01：0分钟"></div><span>26-03</span></div><div class="hm-col"><div class="cell l2" title="2026-04-01：2小时0分"></div><span>26-04</span></div><div class="hm-col"><div class="cell l1" title="2026-05-01：1小时0分"></div><span>26-05</span></div><div class="hm-col"><div class="cell l2" title="2026-06-01：2小时0分"></div><span>26-06</span></div><div class="hm-col"><div class="cell l3" title="2026-07-01：4小时0分"></div><span>26-07</span></div><div class="hm-col"><div class="cell l4" title="2026-08-01：5小时33分"></div><span>26-08</span></div><div class="hm-col"><div class="cell l1" title="2026-09-01：1小时0分"></div><span>26-09</span></div><div class="hm-col"><div class="cell l1" title="2026-10-01：20分钟"></div><span>26-10</span></div></div></div>
+<input class="search" placeholder="搜索书名 / 作者 / 划线内容…">
+<div class="book-card"><div class="bc-spine" style="background:linear-gradient(180deg,#5b8fd9,#5b8fd9cc)"></div><div class="bc-body"><div class="bh" onclick="tg(this)"><div class="bt">写信的人<span class="ba">作者6号</span></div><div class="bs">🟡 2 · 💭 1<div class="prog"><div class="pb" style="width:38%"></div><b>38%</b></div><span class="rd">🕒 2026-09-17</span></div></div><div class="bb" hidden><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-09-16</div><div class="mt">灯塔的意义不在于照亮海面，而在于让航行者确认自己的位置。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-09-15</div><div class="mt">所有伟大的导航术，本质上都是与不确定性共处的艺术。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark thought"><div class="mm">💭 想法 ·  · 2026-09-14</div><div class="mt">读到这段想起博尔赫斯的巴别图书馆——确认位置和确认存在，也许是一回事。</div><div class="ai">🔵 <i>助手批注区</i></div></div></div></div></div><div class="book-card"><div class="bc-spine" style="background:linear-gradient(180deg,#5fae72,#5fae72cc)"></div><div class="bc-body"><div class="bh" onclick="tg(this)"><div class="bt">岛屿边缘<span class="ba">作者7号</span></div><div class="bs">🟡 2 · 💭 1<div class="prog"><div class="pb" style="width:100%"></div><b>100%</b></div><span class="rd">🕒 2026-09-17</span></div></div><div class="bb" hidden><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-09-16</div><div class="mt">灯塔的意义不在于照亮海面，而在于让航行者确认自己的位置。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-09-15</div><div class="mt">所有伟大的导航术，本质上都是与不确定性共处的艺术。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark thought"><div class="mm">💭 想法 ·  · 2026-09-14</div><div class="mt">读到这段想起博尔赫斯的巴别图书馆——确认位置和确认存在，也许是一回事。</div><div class="ai">🔵 <i>助手批注区</i></div></div></div></div></div><div class="book-card"><div class="bc-spine" style="background:linear-gradient(180deg,#5fae72,#5fae72cc)"></div><div class="bc-body"><div class="bh" onclick="tg(this)"><div class="bt">山月往来录<span class="ba">作者1号</span></div><div class="bs">🟡 2 · 💭 1<div class="prog"><div class="pb" style="width:55%"></div><b>55%</b></div><span class="rd">🕒 2026-08-30</span></div></div><div class="bb" hidden><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-08-29</div><div class="mt">灯塔的意义不在于照亮海面，而在于让航行者确认自己的位置。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-08-28</div><div class="mt">所有伟大的导航术，本质上都是与不确定性共处的艺术。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark thought"><div class="mm">💭 想法 ·  · 2026-08-27</div><div class="mt">读到这段想起博尔赫斯的巴别图书馆——确认位置和确认存在，也许是一回事。</div><div class="ai">🔵 <i>助手批注区</i></div></div></div></div></div><div class="book-card"><div class="bc-spine" style="background:linear-gradient(180deg,#5fae72,#5fae72cc)"></div><div class="bc-body"><div class="bh" onclick="tg(this)"><div class="bt">候鸟旅馆<span class="ba">作者1号</span></div><div class="bs">🟡 2 · 💭 1<div class="prog"><div class="pb" style="width:15%"></div><b>15%</b></div><span class="rd">🕒 2026-08-05</span></div></div><div class="bb" hidden><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-08-04</div><div class="mt">灯塔的意义不在于照亮海面，而在于让航行者确认自己的位置。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-08-03</div><div class="mt">所有伟大的导航术，本质上都是与不确定性共处的艺术。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark thought"><div class="mm">💭 想法 ·  · 2026-08-02</div><div class="mt">读到这段想起博尔赫斯的巴别图书馆——确认位置和确认存在，也许是一回事。</div><div class="ai">🔵 <i>助手批注区</i></div></div></div></div></div><div class="book-card"><div class="bc-spine" style="background:linear-gradient(180deg,#8a9a6b,#8a9a6bcc)"></div><div class="bc-body"><div class="bh" onclick="tg(this)"><div class="bt">纸船远航<span class="ba">作者4号</span></div><div class="bs">🟡 2 · 💭 1<div class="prog"><div class="pb" style="width:100%"></div><b>100%</b></div><span class="rd">🕒 2026-08-01</span></div></div><div class="bb" hidden><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-07-31</div><div class="mt">灯塔的意义不在于照亮海面，而在于让航行者确认自己的位置。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-07-30</div><div class="mt">所有伟大的导航术，本质上都是与不确定性共处的艺术。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark thought"><div class="mm">💭 想法 ·  · 2026-07-29</div><div class="mt">读到这段想起博尔赫斯的巴别图书馆——确认位置和确认存在，也许是一回事。</div><div class="ai">🔵 <i>助手批注区</i></div></div></div></div></div><div class="book-card"><div class="bc-spine" style="background:linear-gradient(180deg,#d97b8f,#d97b8fcc)"></div><div class="bc-body"><div class="bh" onclick="tg(this)"><div class="bt">夜航地图<span class="ba">作者4号</span></div><div class="bs">🟡 2 · 💭 1<div class="prog"><div class="pb" style="width:38%"></div><b>38%</b></div><span class="rd">🕒 2026-07-30</span></div></div><div class="bb" hidden><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-07-29</div><div class="mt">灯塔的意义不在于照亮海面，而在于让航行者确认自己的位置。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-07-28</div><div class="mt">所有伟大的导航术，本质上都是与不确定性共处的艺术。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark thought"><div class="mm">💭 想法 ·  · 2026-07-27</div><div class="mt">读到这段想起博尔赫斯的巴别图书馆——确认位置和确认存在，也许是一回事。</div><div class="ai">🔵 <i>助手批注区</i></div></div></div></div></div><div class="book-card"><div class="bc-spine" style="background:linear-gradient(180deg,#9b6bd3,#9b6bd3cc)"></div><div class="bc-body"><div class="bh" onclick="tg(this)"><div class="bt">旧铁轨与蝉鸣<span class="ba">作者7号</span></div><div class="bs">🟡 2 · 💭 1<div class="prog"><div class="pb" style="width:55%"></div><b>55%</b></div><span class="rd">🕒 2026-07-27</span></div></div><div class="bb" hidden><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-07-26</div><div class="mt">灯塔的意义不在于照亮海面，而在于让航行者确认自己的位置。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-07-25</div><div class="mt">所有伟大的导航术，本质上都是与不确定性共处的艺术。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark thought"><div class="mm">💭 想法 ·  · 2026-07-24</div><div class="mt">读到这段想起博尔赫斯的巴别图书馆——确认位置和确认存在，也许是一回事。</div><div class="ai">🔵 <i>助手批注区</i></div></div></div></div></div><div class="book-card"><div class="bc-spine" style="background:linear-gradient(180deg,#c9825a,#c9825acc)"></div><div class="bc-body"><div class="bh" onclick="tg(this)"><div class="bt">旅鼠的冬天<span class="ba">作者5号</span></div><div class="bs">🟡 2 · 💭 1<div class="prog"><div class="pb" style="width:90%"></div><b>90%</b></div><span class="rd">🕒 2026-07-25</span></div></div><div class="bb" hidden><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-07-24</div><div class="mt">灯塔的意义不在于照亮海面，而在于让航行者确认自己的位置。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark highlight"><div class="mm">🟡 划线 · 第一章 灯塔 · 2026-07-23</div><div class="mt">所有伟大的导航术，本质上都是与不确定性共处的艺术。</div><div class="ai">🔵 <i>助手批注区</i></div></div><div class="mark thought"><div class="mm">💭 想法 ·  · 2026-07-22</div><div class="mt">读到这段想起博尔赫斯的巴别图书馆——确认位置和确认存在，也许是一回事。</div><div class="ai">🔵 <i>助手批注区</i></div></div></div></div></div>
+</div>
+<footer>微信读书官方 Agent Gateway · 仅存本地 · 双色共读：🟡你 🔵AI</footer>
+<script>
+var COREAD_NOTES={"1": {"user": "这段像在写守塔，其实在写所有坚持记录的人。", "ai": "第一页日志就把“光”重新定义了：不是照亮，是标记。这个动词的转换贯穿全书——守塔人做的每一件事，都是把宏大还原成具体的日常。"}, "2": {"user": "", "ai": ""}, "3": {"user": "", "ai": "注意“消失前还在发光”的双重含义：物理上的船和记忆里的人。作者不写离别，只写光还在——这是全书最温柔的处理方式。"}};
+var cur=null;
+function tg(h){var b=h.nextElementSibling;b.hidden=!b.hidden}
+var sb=document.querySelector('.search');
+sb.addEventListener('input',function(){var q=sb.value.trim().toLowerCase();
+document.querySelectorAll('.book-card').forEach(function(c){
+var hit=!q||c.textContent.toLowerCase().includes(q);
+c.style.display=hit?'':'none';
+if(q&&hit){c.querySelector('.bb').hidden=false;
+c.querySelectorAll('.mark').forEach(function(m){m.style.display=m.querySelector('.mt').textContent.toLowerCase().includes(q)?'':'none'})}
+else{c.querySelectorAll('.mark').forEach(function(m){m.style.display=''})}
+})});
+
+function renderNotes(el, n){
+  var un=el.querySelector('.u-note'); if(un)un.remove();
+  var an=el.querySelector('.a-note'); if(an)an.remove();
+  if(n.user){var u=document.createElement('div');u.className='u-note';u.textContent='🟡 你：'+n.user;el.appendChild(u)}
+  if(n.ai){var a=document.createElement('div');a.className='a-note';a.textContent='🔵 助手：'+n.ai;el.appendChild(a)}
+}
+function persist(){
+  try{ localStorage.setItem('coread-notes', JSON.stringify(COREAD_NOTES)); }catch(e){}
+}
+function loadPersisted(){
+  try{
+    var s=localStorage.getItem('coread-notes');
+    if(!s) return;
+    var saved=JSON.parse(s);
+    for(var k in saved){
+      if(!COREAD_NOTES[k] || (!COREAD_NOTES[k].user && !COREAD_NOTES[k].ai) || saved[k].user || saved[k].ts > (COREAD_NOTES[k].ts||0))
+        COREAD_NOTES[k]=saved[k];
+    }
+    for(var k in COREAD_NOTES){
+      var el=document.getElementById('seg-'+k);
+      if(el) renderNotes(el, COREAD_NOTES[k]);
+    }
+  }catch(e){}
+}
+function pick(id){
+  document.querySelectorAll('.seg.on').forEach(function(x){x.classList.remove('on')});
+  var el=document.getElementById('seg-'+id);el.classList.add('on');cur=id;
+  var ed=document.getElementById('editor');
+  el.after(ed); ed.hidden=false;            // 编辑器跟随点选段落
+  document.getElementById('edit-which').textContent='第 '+id+' 段 · '+(el.querySelector('.seg-text').textContent.slice(0,40))+'…';
+  var n=COREAD_NOTES[String(id)]||{};
+  document.getElementById('edit-user').value=n.user||'';
+  document.getElementById('edit-ai').value=n.ai||'';
+}
+function saveNote(){
+  if(cur==null)return;
+  var u=document.getElementById('edit-user').value, a=document.getElementById('edit-ai').value;
+  if(!u && !a){ return; }
+  COREAD_NOTES[String(cur)]={user:u,ai:a,ts:Date.now()};
+  renderNotes(document.getElementById('seg-'+cur), COREAD_NOTES[String(cur)]);
+  persist();
+  var b=document.getElementById('btn-save');
+  b.textContent='✓ 已存'; setTimeout(function(){b.textContent='保存'},1200);
+}
+function downloadNotes(){
+  var blob=new Blob([JSON.stringify(COREAD_NOTES,null,2)],{type:'application/json'});
+  var aEl=document.createElement('a');
+  aEl.href=URL.createObjectURL(blob);
+  aEl.download='coread-notes.json';
+  aEl.click();
+  URL.revokeObjectURL(aEl.href);
+}
+// 输入即自动保存（停顿 600ms 后触发）
+var _t=null;
+function autoSave(){
+  if(cur==null)return;
+  clearTimeout(_t);
+  _t=setTimeout(function(){
+    var u=document.getElementById('edit-user').value, a=document.getElementById('edit-ai').value;
+    if(u||a){
+      COREAD_NOTES[String(cur)]={user:u,ai:a,ts:Date.now()};
+      renderNotes(document.getElementById('seg-'+cur), COREAD_NOTES[String(cur)]);
+      persist();
+    }
+  },600);
+}
+
+loadPersisted();
+function go(w){
+  document.querySelectorAll('.page').forEach(function(p){p.hidden=true});
+  document.getElementById('page-'+w).hidden=false;
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.add('off')});
+  document.getElementById('tab-'+w).classList.remove('off');
+  window.scrollTo({top:0});
+}
+</script>
+</div></body></html>
