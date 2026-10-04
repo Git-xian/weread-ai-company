@@ -39,8 +39,8 @@ def strip_tags(s):
     return re.sub(r"<[^>]+>", "", s or "").strip()
 
 # ---------- 共读库（EPUB 拆分结果，可选） ----------
-def find_coread_dir(data_dir):
-    """共读库候选：data_dir 根目录 + data_dir/books/* 子目录，取 book.json 最新者。"""
+def list_coread_dirs(data_dir):
+    """所有可用共读书：[(显示名, 文件夹, 段落数)]，按 book.json 时间倒序。"""
     cands = []
     if os.path.exists(os.path.join(data_dir, "book.json")):
         cands.append(data_dir)
@@ -50,12 +50,34 @@ def find_coread_dir(data_dir):
             d = os.path.join(books_root, name)
             if os.path.exists(os.path.join(d, "book.json")) and os.path.exists(os.path.join(d, "segments.db")):
                 cands.append(d)
-    if not cands:
-        return None
-    return max(cands, key=lambda p: os.path.getmtime(os.path.join(p, "book.json")))
+    out = []
+    for d in sorted(cands, key=lambda p: -os.path.getmtime(os.path.join(p, "book.json"))):
+        try:
+            with open(os.path.join(d, "book.json"), encoding="utf-8") as f:
+                meta = json.load(f)
+            name = meta.get("book") or os.path.basename(d)
+            n = meta.get("totalSegments", "?")
+        except Exception:
+            name, n = os.path.basename(d), "?"
+        out.append((name, d, n))
+    return out
 
-def load_coread(data_dir):
-    cdir = find_coread_dir(data_dir)
+def find_coread_dir(data_dir, want=None):
+    """选共读书：--book 指定时按名字/文件夹名模糊匹配，否则取最近添加的一本。"""
+    dirs = list_coread_dirs(data_dir)
+    if not dirs:
+        return None
+    if want:
+        w = want.lower()
+        for name, d, _ in dirs:
+            folder = os.path.basename(d)
+            if w in name.lower() or w in folder.lower():
+                return d
+        return None
+    return dirs[0][1]
+
+def load_coread(data_dir, want=None):
+    cdir = find_coread_dir(data_dir, want)
     if not cdir:
         return None
     with open(os.path.join(cdir, "book.json"), encoding="utf-8") as f:
@@ -221,9 +243,45 @@ button.dl{background:#6ba26b}
 footer{margin-top:26px;text-align:center;color:var(--sub);font-size:12px}
 """
 
+def parse_args(argv):
+    """位置参数：<数据目录> [输出html]；可选：--book <书名> 选共读书，--list 列出所有共读书。"""
+    pos, flags = [], {}
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--book" and i + 1 < len(argv):
+            flags["book"] = argv[i + 1]; i += 2
+        elif a == "--list":
+            flags["list"] = True; i += 1
+        elif a.startswith("--"):
+            sys.exit(f"未知参数: {a}  （可用: --book <书名> / --list）")
+        else:
+            pos.append(a); i += 1
+    return pos, flags
+
 def main():
-    data_dir = sys.argv[1] if len(sys.argv) > 1 else "weread-data"
-    out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(data_dir, "dashboard.html")
+    pos, flags = parse_args(sys.argv[1:])
+    data_dir = pos[0] if pos else "weread-data"
+    out = pos[1] if len(pos) > 1 else os.path.join(data_dir, "dashboard.html")
+
+    # --list：列出所有共读书后退出
+    if flags.get("list"):
+        dirs = list_coread_dirs(data_dir)
+        if not dirs:
+            print("（还没有共读书。先用 epub_split.py 导入一本 EPUB）")
+            return
+        print("可用共读书（最近添加的排最前）：")
+        for i, (name, d, n) in enumerate(dirs, 1):
+            notes_file = os.path.join(d, "coread-notes.json")
+            n_notes = 0
+            if os.path.exists(notes_file):
+                try:
+                    n_notes = len(json.load(open(notes_file, encoding="utf-8")))
+                except Exception:
+                    pass
+            print(f"  {i}. {name}  ({n} 段 · {n_notes} 条批注)  文件夹: {os.path.basename(d)}")
+        print('\n生成指定书的看板： python3 weread_dashboard.py %s %s --book "书名关键词"' % (data_dir, out))
+        return
 
     shelf = load(data_dir, "shelf.json", {})
     stats = load(data_dir, "readdata.json", {})
@@ -295,7 +353,10 @@ def main():
     cards_html = "".join(cards)
 
     # ---- 共读库（EPUB 拆分结果，可选） ----
-    coread = load_coread(data_dir)
+    coread = load_coread(data_dir, flags.get("book"))
+    if flags.get("book") and not coread:
+        avail = "、".join(n for n, _, _ in list_coread_dirs(data_dir)) or "（无）"
+        sys.exit(f'没找到共读书「{flags["book"]}」。现有：{avail}\n用 --list 查看全部')
     cr_html = coread_html(coread)
     cr_js = COREAD_JS if coread else ""
     cr_init = json.dumps({s["id"]: {"user": s["user"], "ai": s["ai"]} for s in coread["segments"]} if coread else {},

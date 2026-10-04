@@ -90,10 +90,10 @@ python3 weread_pull.py wxds.txt weread-data
 **微信读书 API 不提供正文**——要"逐段共读"，需要原版书文件。找一本 EPUB（你自己合法拥有的），发给 AI 或自己跑：
 
 ```bash
-python3 epub_split.py 你的书.epub weread-data
+python3 epub_split.py 你的书.epub "weread-data/books/你的书名"
 ```
 
-它用 zipfile 直接解 EPUB，把每章切成段落存进 `segments.db`（SQLite），同时生成章节索引 `book.json`。
+它用 zipfile 直接解 EPUB，把每章切成段落存进 `segments.db`（SQLite），同时生成章节索引 `book.json`。**每本书一个文件夹**，互不干扰。
 
 ### ③ 生成看板
 
@@ -102,6 +102,15 @@ python3 weread_dashboard.py weread-data weread-data/dashboard.html
 ```
 
 输出**一个自包含 HTML**：样式、脚本、数据全部内联。发到手机（微信文件传输助手 / 网盘都行），浏览器直接打开。
+
+### 换一本共读书
+
+```bash
+python3 weread_dashboard.py weread-data --list                          # 看有哪些共读书（含批注数）
+python3 weread_dashboard.py weread-data out.html --book "书名关键词"      # 切到指定书
+```
+
+不加 `--book` 时默认显示最近添加的那本。旧书的 `segments.db` 和 `coread-notes.json` 都留在各自文件夹里，随时切回去，批注一条不少。
 
 ---
 
@@ -223,6 +232,9 @@ iPhone / Android 上有沙箱 Agent（能跑 Python、读写文件）的话，�
 ---
 
 ## 六、常见问题（FAQ）
+
+**Q：换了一本书共读，之前那本的批注会丢吗？**
+不会。每本书的段落库和批注文件都在 `weread-data/books/<书名>/` 里各存一份，换书只是换个文件夹读。用 `--list` 能看到每本书的批注条数，用 `--book "书名"` 随时切回去。
 
 **Q：会泄露我的读书数据吗？**
 所有数据只存在你本地（JSON / SQLite / HTML），Key 只在本地使用。看板 HTML 里不含 Key。**但请注意**：生成的 HTML 包含你的划线和想法全文，分享前自己掂量。（本文截图全部来自一套**虚构演示数据**，非作者真实读书记录。）
