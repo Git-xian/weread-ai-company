@@ -1,0 +1,10 @@
+# 本地数据目录（含你的真实笔记，勿上传）
+weread-data/
+*.db
+wxds.txt
+*.key
+
+# 系统文件
+__pycache__/
+.DS_Store
+Thumbs.db
